@@ -1,44 +1,46 @@
-// Required Node.js module imports
 import { execSync } from "child_process";
-import { writeFileSync } from "fs";
-import { getCustomSettings } from './customSettings';  // Importing the function from customSettings.ts
 
+/**
+ * Represents possible environments based on branch names.
+ */
 export enum Environment {
-    DEVELOP = "dev",
+    DEV = "dev",
     QA = "qa",
     UAT = "uat",
-    MASTER = "prod",
+    PROD = "prod",
     LOCAL = "local"
 }
 
-// Obtain the current Git branch name
-// If the branch name is not retrieved, default to "local"
-const branchName: string = (execSync("git rev-parse --abbrev-ref HEAD").toString().trim()) ?? Environment.LOCAL;
-
-// Mapping of Git branch names to their corresponding environments
-const branchs: { [key: string]: Environment } = {
-    develop: Environment.DEVELOP,
+/**
+ * Mapping of git branch names to corresponding environments.
+ */
+const branchToEnvironmentMap: { [key: string]: Environment } = {
+    develop: Environment.DEV,
     qa: Environment.QA,
     uat: Environment.UAT,
-    master: Environment.MASTER
+    master: Environment.PROD
 };
 
-// Determine the environment based on the Git branch name
-// Default to "local" if the branch name is not found in the branchs mapping
-const ENV: Environment = branchs[branchName] ?? Environment.LOCAL;
+/**
+ * Returns the current branch name.
+ * 
+ * @returns {string} The name of the current branch, or the value of BRANCH_NAME environment variable if set.
+ */
+export function getCurrentBranch(): string {
+    return process.env.BRANCH_NAME ?? execSync("git rev-parse --abbrev-ref HEAD").toString().trim();
+}
 
-// Configuration JSON structure
-const configuration = {
-    customSettings: getCustomSettings(ENV),  // Use the function to get custom settings based on ENV
-    "platform": {
-        // ... (omitted for brevity)
-    }
-};
+/**
+ * Determines the environment based on the current branch.
+ * 
+ * @returns {Environment} The corresponding environment for the current branch or LOCAL if the branch is not recognized.
+ */
+export function getEnvironment(): Environment {
+    const currentBranch = getCurrentBranch();
+    return branchToEnvironmentMap[currentBranch] ?? Environment.LOCAL;
+}
 
-// Write the configuration to an environment-specific JSON file
-// The file will be named as "openfin.manifest.{ENV}.json", where {ENV} is the determined environment
-const filePath = `public/openfin.manifest.${ENV}.json`;
-writeFileSync(filePath, JSON.stringify(configuration, null, 2), 'utf-8');
-
-// Output the path of the created file to the console
-console.log(`Configuration written to ${filePath}`);
+/**
+ * The detected environment based on the current branch.
+ */
+const ENV: Environment = getEnvironment();
