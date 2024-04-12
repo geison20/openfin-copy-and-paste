@@ -1,0 +1,161 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "type": "object",
+    "properties": {
+        "entries": {
+            "type": "array",
+            "items": {
+                "oneOf": [
+                    {
+                        "$ref": "#/definitions/DockButtonAppsByTag"
+                    },
+                    {
+                        "$ref": "#/definitions/DockButtonApp"
+                    },
+                    {
+                        "$ref": "#/definitions/DockButtonAction"
+                    },
+                    {
+                        "$ref": "#/definitions/DockButtonDropdown"
+                    }
+                ]
+            }
+        }
+    },
+    "definitions": {
+        "DockButtonBase": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "visible": {
+                    "type": "boolean"
+                },
+                "tooltip": {
+                    "type": "string"
+                },
+                "iconUrl": {
+                    "type": "string"
+                },
+                "conditions": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            },
+            "required": [
+                "id"
+            ],
+            "additionalProperties": false
+        },
+        "DockButtonAppsByTag": {
+            "type": "object",
+            "properties": {
+                "display": {
+                    "type": "string",
+                    "enum": [
+                        "individual",
+                        "group"
+                    ]
+                },
+                "tags": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "noEntries": {
+                    "type": "string"
+                }
+            },
+            "allOf": [
+                {
+                    "$ref": "#/definitions/DockButtonBase"
+                }
+            ],
+            "required": [
+                "display"
+            ]
+        },
+        "DockButtonApp": {
+            "type": "object",
+            "properties": {
+                "appId": {
+                    "type": "string"
+                }
+            },
+            "allOf": [
+                {
+                    "$ref": "#/definitions/DockButtonBase"
+                }
+            ],
+            "required": [
+                "appId"
+            ]
+        },
+        "DockButtonAction": {
+            "type": "object",
+            "properties": {
+                "action": {
+                    "type": "object",
+                    "properties": {
+                        "id": {
+                            "type": "string"
+                        },
+                        "customData": {
+                            "type": "object"
+                        }
+                    },
+                    "required": [
+                        "id"
+                    ]
+                }
+            },
+            "allOf": [
+                {
+                    "$ref": "#/definitions/DockButtonBase"
+                }
+            ],
+            "required": [
+                "action"
+            ]
+        },
+        "DockButtonDropdown": {
+            "type": "object",
+            "properties": {
+                "options": {
+                    "type": "array",
+                    "items": {
+                        "oneOf": [
+                            {
+                                "$ref": "#/definitions/DockButtonAppsByTag"
+                            },
+                            {
+                                "$ref": "#/definitions/DockButtonApp"
+                            },
+                            {
+                                "$ref": "#/definitions/DockButtonAction"
+                            },
+                            {
+                                "$ref": "#/definitions/DockButtonDropdown"
+                            }
+                        ]
+                    }
+                },
+                "noEntries": {
+                    "type": "string"
+                }
+            },
+            "allOf": [
+                {
+                    "$ref": "#/definitions/DockButtonBase"
+                }
+            ],
+            "required": [
+                "options"
+            ]
+        }
+    }
+}
