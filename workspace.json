@@ -1,36 +1,7 @@
 {
     "$schema": "http://json-schema.org/draft-07/schema#",
-    "definitions": {
-        "workspaceMetadata": {
-            "type": "object",
-            "properties": {
-                "APIVersion": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "APIVersion"
-            ],
-            "additionalProperties": false
-        },
-        "browserSnapshotWindow": {
-            "type": "object",
-            "additionalProperties": true
-        },
-        "browserSnapshot": {
-            "type": "object",
-            "properties": {
-                "windows": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/browserSnapshotWindow"
-                    }
-                }
-            },
-            "required": [
-                "windows"
-            ]
-        },
+    "type": "object",
+    "properties": {
         "workspace": {
             "type": "object",
             "properties": {
@@ -43,7 +14,16 @@
                 "metadata": {
                     "oneOf": [
                         {
-                            "$ref": "#/definitions/workspaceMetadata"
+                            "type": "object",
+                            "properties": {
+                                "APIVersion": {
+                                    "type": "string"
+                                }
+                            },
+                            "required": [
+                                "APIVersion"
+                            ],
+                            "additionalProperties": false
                         },
                         {
                             "type": "null"
@@ -51,7 +31,19 @@
                     ]
                 },
                 "snapshot": {
-                    "$ref": "#/definitions/browserSnapshot"
+                    "type": "object",
+                    "properties": {
+                        "windows": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "additionalProperties": true
+                            }
+                        }
+                    },
+                    "required": [
+                        "windows"
+                    ]
                 }
             },
             "required": [
@@ -59,12 +51,6 @@
                 "title",
                 "snapshot"
             ]
-        }
-    },
-    "type": "object",
-    "properties": {
-        "workspace": {
-            "$ref": "#/definitions/workspace"
         }
     },
     "required": [
