@@ -1,31 +1,25 @@
 describe('When POST to /api/v1/workspaces fails', () => {
     const invalidWorkspaces = [
-        { ...generateMockWorkspaces(), title: null },
-        { ...generateMockWorkspaces(), snapshot: null },
-        { ...generateMockWorkspaces(), workspaceId: null }
+        { description: "title is required", data: { ...generateMockWorkspaces(), title: null }, missingField: 'title' },
+        { description: "snapshot is required", data: { ...generateMockWorkspaces(), snapshot: null }, missingField: 'snapshot' },
+        { description: "workspaceId is required", data: { ...generateMockWorkspaces(), workspaceId: null }, missingField: 'workspaceId' }
     ];
 
-    invalidWorkspaces.forEach((invalidWorkspace, index) => {
-        describe(`Property '${Object.keys(invalidWorkspace).find(key => invalidWorkspace[key] === null)}' is required`, () => {
+    test.each(invalidWorkspaces)(
+        'Should receive 400 with "Bad Request" when $description',
+        async ({ data, missingField }) => {
             let response: AxiosResponse;
+            response = await axios.post(`/api/v1/workspaces`, data).catch(e => e.response);
 
-            beforeAll(async () => {
-                response = await axios.post(`/api/v1/workspaces`, invalidWorkspace).catch(e => e.response);
-                console.log('Workspace Invalid: ', util.inspect(response, { colors: true }));
-            });
+            console.log('Workspace Invalid: ', util.inspect(response, { colors: true }));
 
-            it(`Should receive 400 with 'Bad Request' for missing '${Object.keys(invalidWorkspace).find(key => invalidWorkspace[key] === null)}'`, async () => {
-                expect(response.status).toBe(400);
-                expect(response.statusText).toMatch('Bad Request');
+            expect(response.status).toBe(400);
+            expect(response.statusText).toMatch('Bad Request');
+            expect(response.data).toEqual({
+                statusCode: 400,
+                error: 'Bad Request',
+                message: `body/${missingField} must be string`
             });
-
-            it(`Should receive response with invalid data for missing '${Object.keys(invalidWorkspace).find(key => invalidWorkspace[key] === null)}'`, async () => {
-                expect(response.data).toEqual({
-                    statusCode: 400,
-                    error: 'Bad Request',
-                    message: `body/${Object.keys(invalidWorkspace).find(key => invalidWorkspace[key] === null)} must be string`
-                });
-            });
-        });
-    });
+        }
+    );
 });
