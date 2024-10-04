@@ -22,7 +22,7 @@ const MonacoEditorComponent: React.FC<MonacoEditorProps> = ({ code = {} }) => {
       height="500px"
       language="json"
       value={code}
-      beforeMount={handleEditorWillMount}
+      //   beforeMount={handleEditorWillMount}
       onChange={() => {
         console.log("changed");
       }}
