@@ -1,36 +1,43 @@
-import React from 'react';
-import { useForm } from 'react-hook-form';
+export const updateUserPrefsTransaction = async (
+  mongoClient: AppMongoClient,
+  args: UpdateUserPreferencesArgs[]
+): Promise<UserPreference[]> => {
+  const mongoDatabase = mongoClient.getDatabase();
+  const timestamp = new Date().toISOString();
 
-function MyForm() {
-    const {
-        register,
-        handleSubmit,
-        formState: { errors }
-    } = useForm();
+  const updateOperations = args.map(async ({ user, namespace, key, value }) => {
+    let finalValue = value;
 
-    const onSubmit = data => {
-        console.log(data);
-    };
+    if (namespace === NAMESPACES.WORKSPACE || namespace === NAMESPACES.PAGE) {
+      const appIdsFromManifest = getAppIdsFromManifest(value).map(appId => appId.split("/")[0]);
 
-    return (
-        <form onSubmit= { handleSubmit(onSubmit) } >
-        <textarea
-        {
-            ...register('nbks', {
-                required: 'This field is required',
-                pattern: {
-                    value: /^([A-Za-z0-9]{1,7})(,\s*[A-Za-z0-9]{1,7})*$/,
-                    message: 'Please enter items separated by a comma (,). Each item should be a maximum of 7 characters long.'
-                }
-            })
+      const apps = await mongoDatabase
+        .collection("apps")
+        .find<AppDefinition>({ appId: { $in: appIdsFromManifest } })
+        .toArray();
+
+      if (apps.length > 0) {
+        const appIdsToSwap = appIdsFromManifest.filter(appId =>
+          apps.some(({ appId: existingId }) => existingId === appId)
+        );
+
+        if (appIdsToSwap.length > 0) {
+          finalValue = swapComponentStateUrl(value, apps);
         }
-        />
-        {
-            errors.nbks && <p>{ errors.nbks.message } < /p>}
+      }
+    }
 
-                < input type="submit" />
-                </form>
-  );
-        }
+    await mongoDatabase.collection<UserPreference>(mongoClient.collection).updateOne(
+      { user, namespace, key },
+      { $set: { user, namespace, key, value: finalValue, timestamp } },
+      { upsert: true }
+    );
+  });
 
-    export default MyForm;
+  await Promise.all(updateOperations);
+
+  return mongoDatabase
+    .collection<UserPreference>(mongoClient.collection)
+    .find({ user: { $in: args.map(a => a.user) } }) // Retorna todas as preferências associadas aos usuários processados
+    .toArray();
+};
