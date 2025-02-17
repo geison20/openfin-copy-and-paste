@@ -1,15 +1,37 @@
-// overwrite-fetch.ts
+import assert from 'assert';
+import { getAppIdsFromManifest } from './getAppIdsFromManifest.js'; // ajuste o caminho se necessário
 
-// Keep a reference to the original fetch function
-const originalFetch = window.fetch;
+// Teste básico com um manifest válido
+const testManifest = JSON.stringify({
+    workspacePlatform: [
+        {
+            componentState: {
+                name: "app1"
+            }
+        },
+        {
+            componentState: {
+                name: "app2"
+            }
+        }
+    ]
+});
 
-// Overwrite the global fetch method to always include the "credentials" option
-window.fetch = function (input: RequestInfo | URL, init: RequestInit = {}): Promise<Response> {
-    // Convert URL object to string if necessary
-    const requestInput: RequestInfo = input instanceof URL ? input.toString() : input;
+const emptyManifest = JSON.stringify({});
 
-    return originalFetch(requestInput, {
-        ...init,
-        credentials: 'include',
-    });
-};
+const malformedManifest = "{ workspacePlatform: [ { componentState: { name: 'app1' } } ]"; // JSON inválido
+
+test('should extract app IDs correctly from a valid manifest', () => {
+    const result = getAppIdsFromManifest(testManifest);
+    assert.deepStrictEqual(result, ["app1", "app2"]);
+});
+
+test('should return an empty array for an empty manifest', () => {
+    const result = getAppIdsFromManifest(emptyManifest);
+    assert.deepStrictEqual(result, []);
+});
+
+test('should handle malformed JSON gracefully', () => {
+    const result = getAppIdsFromManifest(malformedManifest);
+    assert.deepStrictEqual(result, []);
+});
