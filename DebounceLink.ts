@@ -2,10 +2,9 @@
 import * as React from 'react';
 import {
   makeStyles,
-  shorthands,
-  Button,
   Title2,
   Body1,
+  Button,
 } from '@fluentui/react-components';
 import { ErrorCircle24Regular } from '@fluentui/react-icons';
 
@@ -22,8 +21,7 @@ const useStyles = makeStyles({
     color: '#616161',
   },
   icon: {
-    fontSize: '48px',
-    color: '#B00020',
+    fontSize: '48px'
   },
 });
 
@@ -35,10 +33,10 @@ type EmptyStateProps = {
 };
 
 export const EmptyState: React.FC<EmptyStateProps> = ({
-  title = 'Algo deu errado',
-  message = 'Não foi possível carregar os dados. Tente novamente mais tarde.',
+  title = 'Something went wrong',
+  message = 'We couldn’t load this content. Please try again later.',
   onRetry,
-  retryText = 'Tentar novamente',
+  retryText = 'Try again',
 }) => {
   const styles = useStyles();
 
