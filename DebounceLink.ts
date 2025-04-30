@@ -1,57 +1,57 @@
-import { ApolloLink, Operation, FetchResult, Observable } from '@apollo/client';
-import { debounce } from 'lodash';
+// components/EmptyState.tsx
+import * as React from 'react';
+import {
+  makeStyles,
+  shorthands,
+  Button,
+  Title2,
+  Body1,
+} from '@fluentui/react-components';
+import { ErrorCircle24Regular } from '@fluentui/react-icons';
 
-class DebounceLink extends ApolloLink {
-    private defaultDelay: number;
-    private pendingOperations: Record<string, (op?: Operation) => void> = {};
+const useStyles = makeStyles({
+  container: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: '100%',
+    textAlign: 'center',
+    padding: '2rem',
+    gap: '1rem',
+    color: '#616161',
+  },
+  icon: {
+    fontSize: '48px',
+    color: '#B00020',
+  },
+});
 
-    /**
-     * Constructor for the DebounceLink.
-     * @param defaultDelay - Default delay in milliseconds for the debounce.
-     */
-    constructor(defaultDelay: number = 300) {
-        super();
-        this.defaultDelay = defaultDelay;
-    }
+type EmptyStateProps = {
+  title?: string;
+  message?: string;
+  onRetry?: () => void;
+  retryText?: string;
+};
 
-    /**
-     * Requests an operation after the debounce period.
-     * @param operation - The GraphQL operation being requested.
-     * @param forward - Function to proceed with the next step of the request (typically the actual request execution).
-     * @returns An observable of the response.
-     */
-    request(operation: Operation, forward: (op: Operation) => Observable<FetchResult>): Observable<FetchResult> {
-        return new Observable(observer => {
-            // Retrieve the debounce key and delay from the operation's context.
-            const context = operation.getContext();
-            const debounceKey = context.debounceKey || operation.operationName || 'defaultKey';
-            const delay = context.delay || this.defaultDelay;
+export const EmptyState: React.FC<EmptyStateProps> = ({
+  title = 'Algo deu errado',
+  message = 'Não foi possível carregar os dados. Tente novamente mais tarde.',
+  onRetry,
+  retryText = 'Tentar novamente',
+}) => {
+  const styles = useStyles();
 
-            // If there's a pending operation with the same key, cancel it.
-            if (this.pendingOperations[debounceKey]) {
-                this.pendingOperations[debounceKey]();
-            }
-
-            // Debounce the operation execution.
-            const debounced = debounce((op: Operation) => {
-                const handle = forward(op).subscribe({
-                    next: observer.next.bind(observer),
-                    error: observer.error.bind(observer),
-                    complete: observer.complete.bind(observer)
-                });
-
-                return () => {
-                    handle.unsubscribe();
-                };
-            }, delay);
-
-            this.pendingOperations[debounceKey] = debounced;
-            const cleanup = debounced(operation);
-
-            return () => {
-                cleanup();
-                this.pendingOperations[debounceKey] = undefined;
-            };
-        });
-    }
-}
+  return (
+    <div className={styles.container}>
+      <ErrorCircle24Regular className={styles.icon} />
+      <Title2>{title}</Title2>
+      <Body1>{message}</Body1>
+      {onRetry && (
+        <Button appearance="primary" onClick={onRetry}>
+          {retryText}
+        </Button>
+      )}
+    </div>
+  );
+};
