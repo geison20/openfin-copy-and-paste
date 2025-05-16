@@ -9,11 +9,14 @@ import {
 const useStyles = makeStyles({
   container: {
     display: 'flex',
-    flexDirection: 'column',
-    rowGap: '12px',
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'flex-start',
+    alignItems: 'flex-start',
+    gap: '16px',
     padding: '16px',
     backgroundColor: '#1b1a19',
-    height: '100vh',
+    minHeight: '100vh',
   },
   card: {
     ...shorthands.padding('16px'),
@@ -23,15 +26,32 @@ const useStyles = makeStyles({
     flexDirection: 'column',
     rowGap: '8px',
     boxShadow: '0 0 0 1px #3b3a39',
+    width: '250px', // Largura fixa por card
+    height: '100px',
   },
 });
 
-const SkeletonCard = () => {
+const ResponsiveSkeletonRow = () => {
   const styles = useStyles();
+  const [count, setCount] = React.useState(0);
+
+  React.useEffect(() => {
+    const updateCount = () => {
+      const screenWidth = window.innerWidth;
+      const cardWidth = 250 + 16; // card + gap
+      const cardsPerRow = Math.floor(screenWidth / cardWidth);
+      const rows = 2; // Exibir até 2 linhas de skeletons
+      setCount(cardsPerRow * rows);
+    };
+
+    updateCount();
+    window.addEventListener('resize', updateCount);
+    return () => window.removeEventListener('resize', updateCount);
+  }, []);
 
   return (
     <div className={styles.container}>
-      {[...Array(3)].map((_, index) => (
+      {[...Array(count)].map((_, index) => (
         <div key={index} className={styles.card}>
           <Skeleton>
             <SkeletonItem shape="rectangle" size="medium" style={{ width: '60%' }} />
@@ -44,4 +64,4 @@ const SkeletonCard = () => {
   );
 };
 
-export default SkeletonCard;
+export default ResponsiveSkeletonRow;
