@@ -1,0 +1,47 @@
+import * as React from 'react';
+import {
+  Skeleton,
+  SkeletonItem,
+  makeStyles,
+  shorthands,
+} from '@fluentui/react-components';
+
+const useStyles = makeStyles({
+  container: {
+    display: 'flex',
+    flexDirection: 'column',
+    rowGap: '12px',
+    padding: '16px',
+    backgroundColor: '#1b1a19',
+    height: '100vh',
+  },
+  card: {
+    ...shorthands.padding('16px'),
+    ...shorthands.borderRadius('8px'),
+    backgroundColor: '#2b2a29',
+    display: 'flex',
+    flexDirection: 'column',
+    rowGap: '8px',
+    boxShadow: '0 0 0 1px #3b3a39',
+  },
+});
+
+const SkeletonCard = () => {
+  const styles = useStyles();
+
+  return (
+    <div className={styles.container}>
+      {[...Array(3)].map((_, index) => (
+        <div key={index} className={styles.card}>
+          <Skeleton>
+            <SkeletonItem shape="rectangle" size="medium" style={{ width: '60%' }} />
+            <SkeletonItem shape="rectangle" size="small" style={{ width: '40%' }} />
+            <SkeletonItem shape="rectangle" size="small" style={{ width: '80%' }} />
+          </Skeleton>
+        </div>
+      ))}
+    </div>
+  );
+};
+
+export default SkeletonCard;
