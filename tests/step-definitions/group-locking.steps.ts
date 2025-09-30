@@ -16,17 +16,13 @@ type LockState = "checked" | "unchecked";
 
 setDefaultTimeout(60_000);
 
-let appWorld: AppWorld | undefined;
+let appWorld!: AppWorld;
 
 BeforeAll(async () => {
   appWorld = await createWindowContext();
 });
 
 AfterAll(async () => {
-  if (!appWorld) {
-    return;
-  }
-
   await appWorld.apiContext.dispose();
   await appWorld.context.close();
   await appWorld.browser.close();
@@ -170,13 +166,7 @@ async function ensureLockSwitchState(
 Given(
   "I am viewing the group details for group {string}",
   async (groupId: string) => {
-    const world = appWorld;
-
-    if (!world) {
-      throw new Error("Application world is not initialised");
-    }
-
-    const { page, baseUrl } = world;
+    const { page, baseUrl } = appWorld;
     const url = new URL(`/groups/${groupId}`, baseUrl).toString();
 
     await page.goto(url);
@@ -184,41 +174,29 @@ Given(
   }
 );
 
+Then("I should see the group lock switch", async () => {
+  const lockSwitch = await waitForLockSwitch(appWorld.page);
+
+  await expect(lockSwitch).toBeVisible();
+});
+
 Given("the lock switch is {string}", async (state: string) => {
   const desiredState = parseLockState(state);
-  const world = appWorld;
-
-  if (!world) {
-    throw new Error("Application world is not initialised");
-  }
-
-  const lockSwitch = await waitForLockSwitch(world.page);
+  const lockSwitch = await waitForLockSwitch(appWorld.page);
 
   await ensureLockSwitchState(lockSwitch, desiredState);
 });
 
 When("I set the lock switch to {string}", async (state: string) => {
   const desiredState = parseLockState(state);
-  const world = appWorld;
-
-  if (!world) {
-    throw new Error("Application world is not initialised");
-  }
-
-  const lockSwitch = await waitForLockSwitch(world.page);
+  const lockSwitch = await waitForLockSwitch(appWorld.page);
 
   await ensureLockSwitchState(lockSwitch, desiredState);
 });
 
 Then("the lock switch should be {string}", async (state: string) => {
   const expectedState = parseLockState(state);
-  const world = appWorld;
-
-  if (!world) {
-    throw new Error("Application world is not initialised");
-  }
-
-  const lockSwitch = await waitForLockSwitch(world.page);
+  const lockSwitch = await waitForLockSwitch(appWorld.page);
 
   await assertLockSwitchState(lockSwitch, expectedState);
 });
