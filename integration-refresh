@@ -1,0 +1,275 @@
+import type {
+    CLIFilter,
+    CLITemplate,
+    HomeDispatchedSearchResult,
+    HomeSearchListenerResponse,
+    HomeSearchResponse,
+    HomeSearchResult
+} from "@openfin/workspace";
+import type { PlatformApp } from "workspace-platform-starter/shapes/app-shapes";
+import { MANIFEST_TYPES } from "workspace-platform-starter/manifest-types";
+import { getPlatformApps } from "workspace-platform-starter/directory";
+import { getConnectedApps } from "workspace-platform-starter/connections";
+import { getCanDownloadAppAssets, getCanLaunchExternalProcess } from "workspace-platform-starter/utils-capability";
+import { getSettings } from "workspace-platform-starter/settings";
+import type {
+    IntegrationHelpers,
+    IntegrationModule,
+    IntegrationModuleDefinition
+} from "workspace-platform-starter/shapes/integrations-shapes";
+import type { Logger, LoggerCreator } from "workspace-platform-starter/shapes/logger-shapes";
+import type { ModuleDefinition } from "workspace-platform-starter/shapes/module-shapes";
+import { isEmpty } from "workspace-platform-starter/utils";
+import type { AppSettings } from "./shapes";
+
+/**
+ * Implement the integration provider for apps.
+ */
+export class AppProvider implements IntegrationModule<AppSettings> {
+    /**
+     * The default base score for ordering.
+     * @internal
+     */
+    private static readonly _DEFAULT_BASE_SCORE = 0;
+
+    /**
+     * Command to refresh the apps cache.
+     * @internal
+     */
+    private static readonly _REFRESH_APPS_COMMAND = "/apps refresh";
+
+    /**
+     * Provider id.
+     * @internal
+     */
+    private _providerId?: string;
+
+    /**
+     * Module definition.
+     * @internal
+     */
+    private _definition?: IntegrationModuleDefinition<AppSettings>;
+
+    /**
+     * Logger.
+     * @internal
+     */
+    private _logger?: Logger;
+
+    /**
+     * Integration helpers.
+     * @internal
+     */
+    private _integrationHelpers?: IntegrationHelpers;
+
+	/**
+	 * The last query.
+	 */
+	private _lastQuery?: string;
+
+	/**
+	 * The last query min length.
+	 */
+	private _lastQueryMinLength?: number;
+
+	/**
+	 * The last query against array.
+	 */
+	private _lastQueryAgainst?: string[];
+
+	/**
+	 * The last query against array.
+	 */
+	private _lastCLIFilters?: CLIFilter[];
+
+	/**
+	 * The last app results.
+	 */
+	private _lastAppResults?: PlatformApp[];
+
+	/**
+	 * The list of the ids of the last set of results
+	 */
+	private _lastResultIds?: string[];
+
+	/**
+	 * Subscription id for theme-changed lifecycle event.
+	 */
+	private _themeChangedSubscriptionId: string | undefined;
+
+	/**
+	 * Subscription id for favorite-changed lifecycle event.
+	 */
+	private _favChangedSubscriptionId: string | undefined;
+
+	/**
+	 * Initialize the module.
+	 * @param definition The definition of the module from configuration include custom options.
+	 * @param loggerCreator For logging entries.
+	 * @param helpers Helper methods for the module to interact with the application core.
+	 * @returns Nothing.
+	 */
+    public async initialize(
+        definition: ModuleDefinition<AppSettings>,
+        loggerCreator: LoggerCreator,
+        helpers: IntegrationHelpers
+    ): Promise<void> {
+        this._integrationHelpers = helpers;
+        this._definition = definition;
+        this._logger = loggerCreator("AppProvider");
+        this._providerId = definition.id;
+    }
+
+	/**
+	 * Close down any resources being used by the module.
+	 * @returns Nothing.
+	 */
+    public async closedown(): Promise<void> {}
+
+	/**
+	 * Get a list of the static help entries.
+	 * @returns The list of help entries.
+	 */
+    public async getHelpSearchEntries(): Promise<HomeSearchResult[]> {
+        if (!this._integrationHelpers) {
+            return [];
+        }
+        return [
+            {
+                key: `${this._definition?.id}-apps-refresh-help`,
+                score: this._definition?.baseScore ?? AppProvider._DEFAULT_BASE_SCORE,
+                title: AppProvider._REFRESH_APPS_COMMAND,
+                label: "Help",
+                icon: this._definition?.icon,
+                actions: [],
+                data: {
+                    providerId: this._definition?.id,
+                    populateQuery: AppProvider._REFRESH_APPS_COMMAND
+                },
+                template: "Custom" as CLITemplate.Custom,
+                templateContent: await this._integrationHelpers.templateHelpers.createHelp(
+                    AppProvider._REFRESH_APPS_COMMAND,
+                    [
+                        "Atualiza a lista de apps limpando o cache local desta integração e refazendo a busca a partir das fontes configuradas."
+                    ],
+                    [AppProvider._REFRESH_APPS_COMMAND]
+                )
+            }
+        ];
+    }
+
+	/**
+	 * Get a list of search results based on the query and filters.
+	 * @param query The query to search for.
+	 * @param filters The filters to apply.
+	 * @param lastResponse The last search response used for updating existing results.
+	 * @param options Options for the search query.
+	 * @param options.queryMinLength The minimum length before a query is actioned.
+	 * @param options.queryAgainst The fields in the data to query against.
+	 * @param options.isSuggestion Is the query from a suggestion.
+	 * @returns The list of results and new filters.
+	 */
+    public async getSearchResults(
+        query: string,
+        _filters: CLIFilter[],
+        _lastResponse: HomeSearchListenerResponse,
+        _options: { queryMinLength?: number; queryAgainst?: string[]; isSuggestion?: boolean }
+    ): Promise<HomeSearchResponse> {
+        const queryLower = query.toLowerCase();
+        if (queryLower.length >= 1 && AppProvider._REFRESH_APPS_COMMAND.startsWith(queryLower)) {
+            return {
+                results: [
+                    {
+                        key: `${this._providerId}-apps-refresh`,
+                        score: (this._definition?.baseScore ?? AppProvider._DEFAULT_BASE_SCORE) + 1,
+                        title: AppProvider._REFRESH_APPS_COMMAND,
+                        label: "Comando",
+                        icon: this._definition?.icon,
+                        actions: [{ name: "refresh-apps-cache", hotkey: "enter" }],
+                        data: { providerId: this._providerId, command: "apps-refresh" }
+                    }
+                ]
+            };
+        }
+        return { results: [] };
+    }
+
+	/**
+	 * An entry has been selected.
+	 * @param result The dispatched result.
+	 * @param lastResponse The last response.
+	 * @returns True if the item was handled.
+	 */
+    public async itemSelection(
+        result: HomeDispatchedSearchResult,
+        lastResponse: HomeSearchListenerResponse
+    ): Promise<boolean> {
+        if (result.action.trigger === "user-action") {
+            if (result.action.name === "refresh-apps-cache" || result.data?.command === "apps-refresh") {
+                await this.refreshAppsCache(lastResponse);
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Refresh apps by bypassing cached list and re-fetching from configured sources.
+     * Then rebuilds results in-place if possible.
+     * @param lastResponse The last search response to update UI.
+     */
+    private async refreshAppsCache(lastResponse?: HomeSearchListenerResponse): Promise<void> {
+        try {
+            this._logger?.info("Refreshing apps cache (bypass cached list and rebuild)");
+
+            // Fetch fresh apps from directory endpoints and any connected sources
+            const freshDirectoryApps = await getPlatformApps();
+            const connected = await getConnectedApps();
+            const fetchedApps = [...freshDirectoryApps, ...connected];
+
+            // Apply same validation logic as the framework (without touching the framework)
+            const settings = await getSettings();
+            const supportedManifestTypes: string[] = settings?.appProvider?.manifestTypes ?? [];
+            const canLaunchExternal = await getCanLaunchExternalProcess(this._logger);
+            const canDownloadAssets = await getCanDownloadAppAssets(this._logger);
+
+            const validatedApps: PlatformApp[] = [];
+            for (const app of fetchedApps) {
+                const mt = app.manifestType;
+                if (!mt) continue;
+                if (supportedManifestTypes.length > 0 && !supportedManifestTypes.includes(mt)) continue;
+                const isExternal = mt === MANIFEST_TYPES.External.id || mt === MANIFEST_TYPES.InlineExternal.id;
+                const isAppAsset = mt === MANIFEST_TYPES.Appasset.id || mt === MANIFEST_TYPES.InlineAppAsset.id;
+                if (isExternal && !canLaunchExternal) continue;
+                if (isAppAsset && !canDownloadAssets) continue;
+                validatedApps.push(app);
+            }
+
+            // Feedback for the user
+            if (lastResponse && this._integrationHelpers) {
+                const msg = `Cache de apps atualizado. Total: ${validatedApps.length}`;
+                const help = await this._integrationHelpers.templateHelpers.createHelp(
+                    "Apps Atualizados",
+                    [msg],
+                    []
+                );
+                lastResponse.respond([
+                    {
+                        key: `${this._providerId}-apps-refresh-done`,
+                        score: (this._definition?.baseScore ?? AppProvider._DEFAULT_BASE_SCORE) + 2,
+                        title: "Atualizado",
+                        label: "Info",
+                        icon: this._definition?.icon,
+                        actions: [],
+                        template: "Custom" as CLITemplate.Custom,
+                        templateContent: help
+                    }
+                ]);
+            }
+
+            this._logger?.info("Apps cache refresh completed.");
+        } catch (err) {
+            this._logger?.error("Error refreshing apps cache", err);
+        }
+    }
+}
